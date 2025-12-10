@@ -1,5 +1,6 @@
 import sys
 import traceback
+from typing import NoReturn
 
 import click
 
@@ -37,5 +38,5 @@ def warn(message, *args):
     click.echo(click.style(message, fg="yellow"), err=True)
 
 
-def exception(message):
+def exception(message) -> NoReturn:
     raise click.ClickException(click.style(message, bold=True, fg="red"))

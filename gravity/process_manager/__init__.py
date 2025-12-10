@@ -9,11 +9,25 @@ import shlex
 import sys
 from abc import ABCMeta, abstractmethod
 from functools import partial, wraps
+from typing import (
+    Dict,
+    List,
+    Union,
+)
 
 import gravity.io
 from gravity.config_manager import ConfigManager
-from gravity.settings import DEFAULT_INSTANCE_NAME, ServiceCommandStyle
-from gravity.state import VALID_SERVICE_NAMES
+from gravity.settings import (
+    DEFAULT_INSTANCE_NAME,
+    ProcessManager,
+    ServiceCommandStyle,
+)
+from gravity.state import (
+    ConfigFile,
+    VALID_SERVICE_NAMES,
+    Service,
+    ServiceList,
+)
 from gravity.util import which
 
 
@@ -31,7 +45,7 @@ def _route(func, all_process_managers=False):
     """
     @wraps(func)
     def decorator(self, *args, instance_names=None, **kwargs):
-        configs_by_pm = {}
+        configs_by_pm: Dict[ProcessManager, List[ConfigFile]] = {}
         pm_names = self.process_managers.keys()
         instance_names, service_names = self._instance_service_names(instance_names)
         configs = self.config_manager.get_configs(instances=instance_names or None)
@@ -79,7 +93,7 @@ class BaseProcessExecutionEnvironment(metaclass=ABCMeta):
     def _service_program_name(self, instance_name, service):
         return f"{instance_name}_{service.service_type}_{service.service_name}"
 
-    def _service_format_vars(self, config, service, pm_format_vars=None):
+    def _service_format_vars(self, config: ConfigFile, service, pm_format_vars=None):
         pm_format_vars = pm_format_vars or {}
         virtualenv_dir = config.virtualenv
         virtualenv_bin = shlex.quote(f'{os.path.join(virtualenv_dir, "bin")}{os.path.sep}') if virtualenv_dir else ""
@@ -254,12 +268,13 @@ class ProcessExecutor(BaseProcessExecutionEnvironment):
     def _service_environment_formatter(self, environment, format_vars):
         return {k: v.format(**format_vars) for k, v in environment.items()}
 
-    def exec(self, config, service, service_instance_number=None, no_exec=False):
+    def exec(self, config: ConfigFile, service: Union[Service, ServiceList], service_instance_number=None, no_exec=False):
         service_name = service.service_name
 
         # if this is an instance of a service, we need to ensure that instance_number is formatted in as needed
         instance_count = service.count
         if instance_count > 1:
+            assert isinstance(service, ServiceList)  # for mypy
             msg = f"Cannot exec '{service_name}': This service is configured to use multiple instances and "
             if service_instance_number is None:
                 gravity.io.exception(msg + "--service-instance was not set")
@@ -294,7 +309,15 @@ class ProcessExecutor(BaseProcessExecutionEnvironment):
 
 
 class ProcessManagerRouter:
-    def __init__(self, state_dir=None, config_file=None, config_manager=None, user_mode=None, process_manager=None, **kwargs):
+    def __init__(
+        self,
+        state_dir=None,
+        config_file=None,
+        config_manager: Union[ConfigManager, None] = None,
+        user_mode=None,
+        process_manager: Union[ProcessManager, None] = None,
+        **kwargs
+    ):
         self.config_manager = config_manager or ConfigManager(state_dir=state_dir,
                                                               config_file=config_file,
                                                               user_mode=user_mode,
@@ -330,7 +353,7 @@ class ProcessManagerRouter:
                 gravity.io.exception("No provided names are known instance or service names")
         return (instance_names, service_names)
 
-    def exec(self, instance_names=None, service_instance_number=None, no_exec=False):
+    def exec(self, instance_names=None, service_instance_number=None, no_exec: bool = False):
         """ """
         instance_names, service_names = self._instance_service_names(instance_names)
 
