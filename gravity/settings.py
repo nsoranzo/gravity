@@ -1,5 +1,4 @@
 import os
-from enum import Enum
 from typing import (
     Any,
     Dict,
@@ -20,6 +19,8 @@ from pydantic_settings import (
 )
 from typing_extensions import Annotated
 
+from gravity.util import StrEnum
+
 DEFAULT_INSTANCE_NAME = "_default_"
 GX_IT_PROXY_MIN_VERSION = "0.0.6"
 
@@ -30,30 +31,30 @@ def none_to_default(cls, value: Any) -> Any:
     return value
 
 
-class LogLevel(str, Enum):
+class LogLevel(StrEnum):
     debug = "DEBUG"
     info = "INFO"
     warning = "WARNING"
     error = "ERROR"
 
 
-class ProcessManager(str, Enum):
+class ProcessManager(StrEnum):
     supervisor = "supervisor"
     systemd = "systemd"
     multiprocessing = "multiprocessing"
 
 
-class ServiceCommandStyle(str, Enum):
+class ServiceCommandStyle(StrEnum):
     gravity = "gravity"
     direct = "direct"
     exec = "_exec"
 
 
-class AppServer(str, Enum):
+class AppServer(StrEnum):
     gunicorn = "gunicorn"
 
 
-class Pool(str, Enum):
+class Pool(StrEnum):
     prefork = "prefork"
     eventlet = "eventlet"
     gevent = "gevent"
